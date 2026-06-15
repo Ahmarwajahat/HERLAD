@@ -51,7 +51,7 @@ done
 # Start Python agent
 echo "[$(date)] Starting agent..." | tee -a $LOG
 cd "$PROJECT"
-nohup /home/ahmar/.pyenv/versions/3.11.9/bin/python3 -u main.py >> "$LOG" 2>&1 &
+nohup "$PROJECT/.venv/bin/python3" -u main.py >> "$LOG" 2>&1 &
 echo $! > "$PROJECT/logs/agent.pid"
 
 # Start React Dashboard
