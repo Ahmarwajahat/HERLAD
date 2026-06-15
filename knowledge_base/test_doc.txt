@@ -1,0 +1,1 @@
+This is a test document about the Orion autonomous agent RAG system. It uses ChromaDB and Sentence Transformers for local vector search. It is optimized for low memory usage.

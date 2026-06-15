@@ -1,0 +1,29 @@
+# Core Libraries
+requests
+python-dotenv
+watchdog
+
+# LLMs and APIs
+groq
+openai
+cerebras-cloud-sdk
+
+# Automation and Scraping
+selenium
+playwright
+pyautogui
+pyperclip
+beautifulsoup4
+
+# Document and File Processing
+Pillow
+python-docx
+pypdf
+
+# Database
+pymongo
+
+# Vector DB & Embeddings
+chromadb
+sentence-transformers
+torch

@@ -1,0 +1,61 @@
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.pyre/
+.pytype/
+cython_debug/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+dist/
+build/
+
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+bin/
+lib/
+include/
+pip-selfcheck.json
+
+# Environment Secrets & API Keys
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+
+# Playwright & Browser Sessions (Extremely large & contains secrets!)
+agent/profiles/
+.wwebjs_auth/
+.wwebjs_auth_backup/
+.wwebjs_cache/
+whatsapp-bridge/.wwebjs_auth/
+whatsapp-bridge/.wwebjs_auth_backup/
+whatsapp-bridge/.wwebjs_cache/
+
+# Project Logs and Temp Downloads
+logs/
+*.log
+nohup.out
+temp_downloads/
+/mnt/AhmarData/screenshots/
+
+# Temporary execution files
+tasks/local_exec.*
+tasks/local_exec.out
+
+# Operating System Files
+.DS_Store
+Thumbs.db
