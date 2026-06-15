@@ -291,6 +291,41 @@ export default function App() {
     }
   };
 
+  const handleWhatsappLogout = async () => {
+    if (!window.confirm("Are you sure you want to log out of WhatsApp? This will disconnect the current device.")) return;
+    try {
+      const res = await fetch('http://localhost:3001/api/whatsapp/logout', {
+        method: 'POST',
+      });
+      if (res.ok) {
+        alert("Logout request sent. Reinitializing bridge...");
+        setWhatsappConnected(false);
+        setQrCode(null);
+      } else {
+        alert("Failed to send logout request.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error logging out.");
+    }
+  };
+
+  const handleWhatsappConnect = async () => {
+    try {
+      const res = await fetch('http://localhost:3001/api/whatsapp/connect', {
+        method: 'POST',
+      });
+      if (res.ok) {
+        alert("Connection request sent. The QR code should load shortly.");
+      } else {
+        alert("Failed to send connect request.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error initiating connection.");
+    }
+  };
+
   const getToolIcon = (name) => {
     switch (name) {
       case 'search_web':
@@ -417,6 +452,51 @@ export default function App() {
               <User size={13} />
               <span>WhatsApp: {whatsappConnected ? 'Connected' : 'Disconnected'}</span>
             </div>
+            {whatsappConnected ? (
+              <button 
+                onClick={handleWhatsappLogout} 
+                className="status-badge offline" 
+                style={{ 
+                  cursor: 'pointer',
+                  border: '1px solid rgba(239, 68, 68, 0.4)',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: '#f87171',
+                  transition: 'all 0.2s',
+                  padding: '4px 10px',
+                  borderRadius: '100px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                title="Log out from WhatsApp"
+              >
+                <span>Logout</span>
+              </button>
+            ) : (
+              <button 
+                onClick={handleWhatsappConnect} 
+                className="status-badge online" 
+                style={{ 
+                  cursor: 'pointer',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  color: '#34d399',
+                  transition: 'all 0.2s',
+                  padding: '4px 10px',
+                  borderRadius: '100px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+                title="Generate QR Code to Connect"
+              >
+                <span>Connect</span>
+              </button>
+            )}
             {status === 'running' && (
               <div className="status-badge running">
                 <Loader2 size={13} className="animate-spin" />
@@ -742,7 +822,7 @@ export default function App() {
             </div>
 
             <div className="wa-chat-pane">
-              <div className="wa-chat-header">
+              <div className="wa-chat-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div className="wa-chat-user">
                   <div className="wa-avatar" style={{ background: '#10b981' }}>💬</div>
                   <div>
@@ -754,6 +834,42 @@ export default function App() {
                       Active Node Bridge
                     </span>
                   </div>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {whatsappConnected ? (
+                    <button
+                      onClick={handleWhatsappLogout}
+                      className="glow-btn"
+                      style={{
+                        padding: '6px 12px',
+                        background: 'rgba(239, 68, 68, 0.2)',
+                        border: '1px solid rgba(239, 68, 68, 0.4)',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        color: '#f87171',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Logout Session
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleWhatsappConnect}
+                      className="glow-btn"
+                      style={{
+                        padding: '6px 12px',
+                        background: 'rgba(16, 185, 129, 0.2)',
+                        border: '1px solid rgba(16, 185, 129, 0.4)',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        color: '#34d399',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Connect QR
+                    </button>
+                  )}
                 </div>
               </div>
 

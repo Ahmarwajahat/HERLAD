@@ -59,3 +59,17 @@ tasks/local_exec.out
 # Operating System Files
 .DS_Store
 Thumbs.db
+
+# Database stores
+mongodb_data/
+rag/qdrant_store/
+rag/chromadb_store/
+
+# Debug screenshots
+whatsapp-bridge/*.png
+*.png
+
+# Model weights & training tables
+agent/ppo_agent.pt
+agent/rl_q_table.json
+

@@ -156,150 +156,164 @@ async function checkUnreadMessages() {
     }
 }
 
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    authTimeoutMs: 180000,
-    webVersionCache: {
-        type: 'remote',
-        remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1041267924-alpha.html',
-        strict: false
-    },
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    puppeteer: {
-        headless: true,
-        protocolTimeout: 240000,
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--disable-extensions',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-blink-features=AutomationControlled',
-            '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process'
-        ]
-    }
-});
+let client = null;
 
-client.on('loading_screen', (percent, message) => {
-    console.log(`[HERALD Bridge] Loading Screen: ${percent}% - ${message}`);
-});
-
-client.on('authenticated', () => {
-    console.log('[HERALD Bridge] Session Authenticated');
-});
-
-client.on('auth_failure', (msg) => {
-    console.error('[HERALD Bridge] Session Auth Failure:', msg);
-});
-
-client.on('qr', qr => {
-    console.log('\n[HERALD Bridge] Scan QR:\n');
-    qrcode.generate(qr, { small: true });
-    qrCodeString = qr;
+function initializeClient() {
+    console.log('[Bridge] Creating new WhatsApp client instance...');
+    
+    // Clean auth folders first just to be perfectly safe
     try {
-        fs.writeFileSync('../logs/latest_qr.txt', qr);
-    } catch (e) {
-        console.error('Failed to write QR to file:', e.message);
-    }
-    // Broadcast QR to WS clients
-    wss.clients.forEach(c => {
-        if (c.readyState === WebSocket.OPEN) {
-            c.send(JSON.stringify({
-                type: 'qr_code',
-                data: { qr }
-            }));
+        const path = require('path');
+        const lockPath1 = path.join(__dirname, '.wwebjs_auth/session/.lock');
+        const lockPath2 = path.join(__dirname, '.wwebjs_auth/session/SingletonLock');
+        if (fs.existsSync(lockPath1)) fs.rmSync(lockPath1, { force: true });
+        if (fs.existsSync(lockPath2)) fs.rmSync(lockPath2, { force: true });
+    } catch(e) {}
+
+    client = new Client({
+        authStrategy: new LocalAuth(),
+        authTimeoutMs: 180000,
+        webVersionCache: {
+            type: 'remote',
+            remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1041450038-alpha.html',
+            strict: false
+        },
+        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        puppeteer: {
+            headless: true,
+            protocolTimeout: 240000,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--disable-extensions',
+                '--no-first-run',
+                '--no-zygote',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-web-security',
+                '--disable-features=IsolateOrigins,site-per-process'
+            ]
         }
     });
-});
 
-client.on('ready', () => {
-    isConnected = true;
-    qrCodeString = null;
-    try {
-        if (fs.existsSync('../logs/latest_qr.txt')) {
-            fs.unlinkSync('../logs/latest_qr.txt');
-        }
-    } catch (e) {}
-    console.log('[HERALD Bridge] WhatsApp Connected!');
-    checkUnreadMessages();
-    // Broadcast ready status
-    wss.clients.forEach(c => {
-        if (c.readyState === WebSocket.OPEN) {
-            c.send(JSON.stringify({
-                type: 'ready_status',
-                data: { isConnected: true }
-            }));
-        }
+    client.on('loading_screen', (percent, message) => {
+        console.log(`[HERALD Bridge] Loading Screen: ${percent}% - ${message}`);
     });
-});
 
-client.on('disconnected', () => {
-    isConnected = false;
-    qrCodeString = null;
-    // Broadcast ready status
-    wss.clients.forEach(c => {
-        if (c.readyState === WebSocket.OPEN) {
-            c.send(JSON.stringify({
-                type: 'ready_status',
-                data: { isConnected: false }
-            }));
-        }
+    client.on('authenticated', () => {
+        console.log('[HERALD Bridge] Session Authenticated');
     });
-});
 
-client.on('message', async msg => {
-    if (msg.fromMe) return;
-    
-    let sender = '';
-    try {
-        const contact = await msg.getContact();
-        sender = (contact.number || '').replace('+', '').trim();
-    } catch (e) {
-        console.log('[Bridge] Error getting contact:', e.message);
-    }
-    
-    if (!sender) {
-        sender = msg.from.replace('@c.us','').replace('@lid','').replace('+','').split(':')[0].trim();
-    }
-    // Ignore group chats
-    if (msg.from.endsWith('@g.us')) {
-        console.log(`[Bridge] Ignored group message from ${msg.from}`);
-        return;
-    }
-    
-    console.log(`[Message] From: ${msg.from}, resolved sender number: ${sender}, body: ${msg.body}`);
-    
-    const OWNER_NUMBERS = ['923430699325', '161843393859694'];
-    if (!OWNER_NUMBERS.includes(sender)) {
-        console.log(`[Bridge] Ignored - not owner (${sender})`);
-        return;
-    }
-    
-    console.log(`[Bridge] ✅ OWNER command: ${msg.body}`);
-    
-    // Auto reply with expected timing
-    try {
-        let expectedTime = '~15-30 seconds';
-        const bodyLower = (msg.body || '').toLowerCase();
-        if (bodyLower.includes('solve') || bodyLower.includes('generate') || bodyLower.includes('lab') || bodyLower.includes('report') || bodyLower.includes('create')) {
-            expectedTime = '~60-90 seconds';
+    client.on('auth_failure', (msg) => {
+        console.error('[HERALD Bridge] Session Auth Failure:', msg);
+    });
+
+    client.on('qr', qr => {
+        console.log('\n[HERALD Bridge] Scan QR:\n');
+        qrcode.generate(qr, { small: true });
+        qrCodeString = qr;
+        try {
+            fs.writeFileSync('../logs/latest_qr.txt', qr);
+        } catch (e) {
+            console.error('Failed to write QR to file:', e.message);
         }
-        const replyMsg = `⚡ HERALD received! Working on it...\n⏳ Expected completion time: ${expectedTime}.\nI will notify you step-by-step.`;
-        await msg.reply(replyMsg);
-        broadcastWhatsAppMessage(msg.from, replyMsg);
-    } catch(e) {
-        console.log('[Bridge] Could not send reply:', e.message);
-    }
-    
-    // Save task immediately with sender info
-    savePendingTask(msg.body, msg.from);
-    
-    // Forward to Python with retry
-    forwardToPython(msg.body, msg.from, 10);
-});
+        // Broadcast QR to WS clients
+        wss.clients.forEach(c => {
+            if (c.readyState === WebSocket.OPEN) {
+                c.send(JSON.stringify({
+                    type: 'qr_code',
+                    data: { qr }
+                }));
+            }
+        });
+    });
+
+    client.on('ready', () => {
+        isConnected = true;
+        qrCodeString = null;
+        try {
+            if (fs.existsSync('../logs/latest_qr.txt')) {
+                fs.unlinkSync('../logs/latest_qr.txt');
+            }
+        } catch (e) {}
+        console.log('[HERALD Bridge] WhatsApp Connected!');
+        checkUnreadMessages();
+        // Broadcast ready status
+        wss.clients.forEach(c => {
+            if (c.readyState === WebSocket.OPEN) {
+                c.send(JSON.stringify({
+                    type: 'ready_status',
+                    data: { isConnected: true }
+                }));
+            }
+        });
+    });
+
+    client.on('disconnected', () => {
+        isConnected = false;
+        qrCodeString = null;
+        // Broadcast ready status
+        wss.clients.forEach(c => {
+            if (c.readyState === WebSocket.OPEN) {
+                c.send(JSON.stringify({
+                    type: 'ready_status',
+                    data: { isConnected: false }
+                }));
+            }
+        });
+    });
+
+    client.on('message', async msg => {
+        if (msg.fromMe) return;
+        
+        let sender = '';
+        try {
+            const contact = await msg.getContact();
+            sender = (contact.number || '').replace('+', '').trim();
+        } catch (e) {
+            console.log('[Bridge] Failed to resolve contact:', e.message);
+        }
+        if (!sender) {
+            sender = (msg.from || '').replace('@c.us', '').replace('+', '').trim();
+        }
+        
+        const OWNER_NUMBERS = ['923430699325', '161843393859694'];
+        // Owner verification
+        if (!OWNER_NUMBERS.includes(sender)) {
+            console.log(`[Bridge] Ignored incoming command from non-owner: ${sender}`);
+            return;
+        }
+        
+        console.log(`[Bridge] ✅ OWNER command: ${msg.body}`);
+        
+        // Auto reply with expected timing
+        try {
+            let expectedTime = '~15-30 seconds';
+            const bodyLower = (msg.body || '').toLowerCase();
+            if (bodyLower.includes('solve') || bodyLower.includes('generate') || bodyLower.includes('lab') || bodyLower.includes('report') || bodyLower.includes('create')) {
+                expectedTime = '~60-90 seconds';
+            }
+            const replyMsg = `⚡ HERALD received! Working on it...\n⏳ Expected completion time: ${expectedTime}.\nI will notify you step-by-step.`;
+            await msg.reply(replyMsg);
+            broadcastWhatsAppMessage(msg.from, replyMsg);
+        } catch(e) {
+            console.log('[Bridge] Could not send reply:', e.message);
+        }
+        
+        // Save task immediately with sender info
+        savePendingTask(msg.body, msg.from);
+        
+        // Forward to Python with retry
+        forwardToPython(msg.body, msg.from, 10);
+    });
+
+    client.initialize().catch(e => {
+        console.error('[Bridge] Error during client initialize:', e.message);
+    });
+}
+
+initializeClient();
 
 function savePendingTask(task, fromNumber) {
     let tasks = [];
@@ -369,6 +383,69 @@ function forwardToPython(task, from_number, retries=10) {
     req.write(data);
     req.end();
 }
+
+// WhatsApp Connection and Logout endpoints
+app.post('/api/whatsapp/logout', async (req, res) => {
+    console.log('[Bridge] Logout request received');
+    try {
+        if (client) {
+            // Log out from the session (clears local auth cache)
+            await client.logout();
+            isConnected = false;
+            qrCodeString = null;
+            console.log('[Bridge] Successfully logged out');
+            res.json({ success: true, message: 'Logged out successfully' });
+        } else {
+            res.status(400).json({ error: 'Client not initialized' });
+        }
+    } catch (err) {
+        console.error('[Bridge] Error during client.logout(), executing fallback auth purge:', err.message);
+        try {
+            await client.destroy().catch(() => {});
+            const path = require('path');
+            const authPath = path.join(__dirname, '.wwebjs_auth');
+            if (fs.existsSync(authPath)) {
+                fs.rmSync(authPath, { recursive: true, force: true });
+                console.log('[Bridge] Purged .wwebjs_auth directory');
+            }
+            isConnected = false;
+            qrCodeString = null;
+            
+            // Reinitialize client to get a fresh QR code
+            setTimeout(() => {
+                initializeClient();
+            }, 1000);
+            
+            res.json({ success: true, message: 'Cleaned session and reinitializing' });
+        } catch (fallbackErr) {
+            res.status(500).json({ error: 'Failed to force log out: ' + fallbackErr.message });
+        }
+    }
+});
+
+app.post('/api/whatsapp/connect', async (req, res) => {
+    console.log('[Bridge] Connect request received');
+    if (isConnected) {
+        return res.json({ success: true, message: 'Already connected' });
+    }
+    
+    try {
+        console.log('[Bridge] Reinitializing client to force QR generation');
+        if (client) {
+            await client.destroy().catch(() => {});
+        }
+        isConnected = false;
+        qrCodeString = null;
+        
+        setTimeout(() => {
+            initializeClient();
+        }, 1000);
+        
+        res.json({ success: true, message: 'Initializing connection and generating QR' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to initiate connection: ' + err.message });
+    }
+});
 
 // HTTP endpoints
 app.get('/status', async (req, res) => {
@@ -598,4 +675,3 @@ server.listen(PORT, () => {
     }
 });
 
-client.initialize();

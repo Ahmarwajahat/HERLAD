@@ -260,23 +260,60 @@ TOOLS = [
                 "required": ["command"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "iiui_student_portal",
+            "description": "Automate actions on the IIUI student portal (Ibadat International University) to download transcript, fee challan, admit card, or fetch student attendance.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["transcript", "challan", "attendance", "admit_card"],
+                        "description": "The action to perform on the student portal: 'transcript' to download the unofficial transcript, 'challan' to download the unpaid fee challan, 'attendance' to fetch student attendance, or 'admit_card' to download the admit card."
+                    },
+                    "fee_type": {
+                        "type": "string",
+                        "enum": ["any_unpaid", "result_card", "rfid"],
+                        "description": "Specify the fee type to generate/download if action is 'challan'. Default is 'any_unpaid'."
+                    }
+                },
+                "required": ["action"]
+            }
+        }
     }
 ]
 
 # ── Execute tool ───────────────────────────────────
+def get_filepath(args):
+    return args.get("filepath") or args.get("file_path") or args.get("path")
+
 def execute_tool(name, args):
     try:
         if name == "list_files":
             return str(list_files(args.get("folder_path")))
         if name == "read_file":
-            return str(read_file(args["filepath"]))
+            path = get_filepath(args)
+            if not path:
+                return "Error: missing required argument 'filepath'"
+            return read_file(path)
         if name == "write_file":
-            return write_file(args["filepath"], args["content"])
+            path = get_filepath(args)
+            if not path:
+                return "Error: missing required argument 'filepath'"
+            return write_file(path, args.get("content", ""))
         if name == "write_word_file":
-            return write_word_file(args["filepath"], args["content"])
+            path = get_filepath(args)
+            if not path:
+                return "Error: missing required argument 'filepath'"
+            return write_word_file(path, args.get("content", ""))
         if name == "send_whatsapp_file":
-            return send_whatsapp_file(
-                args["filepath"], args.get("caption",""))
+            path = get_filepath(args)
+            if not path:
+                return "Error: missing required argument 'filepath'"
+            return send_whatsapp_file(path, args.get("caption", ""))
         if name == "whatsapp_notify_me":
             return whatsapp_notify_me(args["message"])
         if name == "search_web":
@@ -285,8 +322,10 @@ def execute_tool(name, args):
             return write_and_run_code(
                 args["code"], args.get("filename","output.py"))
         if name == "upload_to_classroom":
-            return upload_to_classroom(
-                args["filepath"], args["class_name"], args["assignment_name"], args.get("account_name", "default"))
+            path = get_filepath(args)
+            if not path:
+                return "Error: missing required argument 'filepath'"
+            return upload_to_classroom(path, args["class_name"], args["assignment_name"], args.get("account_name", "default"))
         if name == "run_code_locally_with_screenshot":
             return run_code_locally_with_screenshot(
                 args["code"], args.get("language", "python"))
@@ -296,13 +335,29 @@ def execute_tool(name, args):
         if name == "search_knowledge_base":
             return search_knowledge_base(args["query"])
         if name == "add_file_to_knowledge_base":
-            return add_file_to_knowledge_base(args["source_path"])
+            path = args.get("source_path") or args.get("filepath") or args.get("file_path") or args.get("path")
+            if not path:
+                return "Error: missing required argument 'source_path'"
+            return add_file_to_knowledge_base(path)
         if name == "run_code_in_nano_and_screenshot":
             return run_code_in_nano_and_screenshot(
                 args["code"], args.get("filename", "program.py"), args.get("language", "python"))
         if name == "execute_bash_command":
             return execute_bash_command(
                 args["command"], args.get("working_dir"))
+        if name == "iiui_student_portal":
+            import subprocess
+            action = args["action"]
+            fee_type = args.get("fee_type", "any_unpaid")
+            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            python_path = os.path.join(project_root, ".venv", "bin", "python")
+            script_path = os.path.join(project_root, "iiui_portal_helper.py")
+            cmd = [python_path, script_path, "--task", action, "--fee_type", fee_type]
+            print(f"[HERALD Portal Tool] Executing: {' '.join(cmd)}")
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            if res.returncode != 0:
+                return f"Error executing student portal automation: {res.stderr}"
+            return res.stdout
         return f"Unknown tool: {name}"
     except Exception as e:
         return f"Tool error: {str(e)}"
@@ -502,11 +557,14 @@ def call_ai(messages: list, tools: list | None = None, tool_choice: str = "auto"
     # Filter out unavailable/dead providers
     available_providers = []
     for p in PROVIDERS:
-        if p["api_key"] in DEAD_KEYS:
-            continue
         if p["dead"]:
             continue
-        if not p["api_key"] or p["api_key"].startswith("your_") or "placeholder" in p["api_key"].lower():
+        api_key = p.get("api_key")
+        if not api_key or not isinstance(api_key, str):
+            continue
+        if api_key in DEAD_KEYS:
+            continue
+        if api_key.startswith("your_") or "placeholder" in api_key.lower():
             continue
         available_providers.append(p)
 
@@ -594,6 +652,23 @@ You are a human computer science student preparing your lab report. You execute 
 5. If a task requires showing execution output, you MUST call run_code_locally_with_screenshot to render the output as a realistic terminal screenshot image.
 6. ALWAYS send the generated file via send_whatsapp_file after creating it.
 7. Keep explanations and reports highly CONCISE, direct, and free of AI boilerplate.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+## HOW TO HANDLE STUDENT PORTAL REQUESTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When the user asks you to fetch or generate items from the student portal (e.g., "mujhe transcript chahiye", "unpaid challan do", "attendance do", "admit card bhejo", or "generate result card fee challan"), follow this sequence:
+1. Identify the requested action: 'transcript', 'challan', 'attendance', or 'admit_card'.
+2. Call the `iiui_student_portal` tool with the appropriate arguments:
+   - For transcripts: action='transcript'
+   - For challans: action='challan', and choose the appropriate 'fee_type' if specified by the user (like 'result_card' or 'rfid').
+   - For attendance: action='attendance'
+   - For admit cards: action='admit_card'
+3. Parse the output JSON of the tool to extract the 'file_path' (and/or 'screenshot_path').
+4. Call `send_whatsapp_file` to send the downloaded/generated file (such as the transcript PDF, challan PDF, admit card PDF, or attendance Word document report) directly to the user.
+5. If the tool response also contains a 'screenshot_path', call `send_whatsapp_file` to send the screenshot as well to show successful portal execution.
+6. Call `whatsapp_notify_me` with a clear, professional message summarizing that the request was successfully retrieved and sent to them.
+7. Stop executing. Do NOT generate any lab report Word files or perform lab checklist steps.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ## HOW TO HANDLE LAB INSTRUCTIONS
@@ -902,7 +977,7 @@ def run_agent(user_task: str):
                 result = execute_tool(name, args)
 
                 # Truncate long results
-                result_str = str(result)
+                result_str = result
                 if len(result_str) > 1500:
                     result_str = result_str[:1500] + "...[truncated]"
 
