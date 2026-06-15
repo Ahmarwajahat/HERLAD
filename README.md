@@ -289,12 +289,8 @@ openwork_project/
 
 ---
 
-## 👥 Authors & Group Members
-- **Ahmar Wajahat**
-- **Sabir Husain**
-- **Ghayour Kamal**
-- **Huraira**
-- **Arsal**
+## 👥 UI Design & Development
+- **Abu Baker** - UI Designer
 
 ---
 *Created for ERP Automation & Advanced AI Orchestration.*
