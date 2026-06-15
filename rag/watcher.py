@@ -93,48 +93,51 @@ class KBWatchHandler(FileSystemEventHandler):
     def on_created(self, event):
         if event.is_directory:
             return
-        ext = os.path.splitext(event.src_path)[1].lower()
+        src_path = event.src_path.decode('utf-8') if isinstance(event.src_path, bytes) else event.src_path
+        ext = os.path.splitext(src_path)[1].lower()
         if ext in SUPPORTED_EXTENSIONS:
-            log_event("WATCHER_FILE_CREATED", {"filepath": event.src_path})
+            log_event("WATCHER_FILE_CREATED", {"filepath": src_path})
             time.sleep(1) # Wait for copying to complete
             try:
-                ingest_file(event.src_path)
-                meta = get_file_metadata(event.src_path)
+                ingest_file(src_path)
+                meta = get_file_metadata(src_path)
                 if meta:
-                    KBMetadataTracker.save(event.src_path, meta["mtime"], meta["size"])
+                    KBMetadataTracker.save(src_path, meta["mtime"], meta["size"])
             except Exception as e:
-                log_event("WATCHER_INGEST_ERROR", {"filepath": event.src_path, "error": str(e)})
+                log_event("WATCHER_INGEST_ERROR", {"filepath": src_path, "error": str(e)})
 
     def on_modified(self, event):
         if event.is_directory:
             return
-        ext = os.path.splitext(event.src_path)[1].lower()
+        src_path = event.src_path.decode('utf-8') if isinstance(event.src_path, bytes) else event.src_path
+        ext = os.path.splitext(src_path)[1].lower()
         if ext in SUPPORTED_EXTENSIONS:
-            meta = get_file_metadata(event.src_path)
-            stored = KBMetadataTracker.load_all().get(event.src_path)
+            meta = get_file_metadata(src_path)
+            stored = KBMetadataTracker.load_all().get(src_path)
             if stored and stored.get("mtime") == meta.get("mtime") and stored.get("size") == meta.get("size"):
                 return # No actual change
             
-            log_event("WATCHER_FILE_MODIFIED", {"filepath": event.src_path})
+            log_event("WATCHER_FILE_MODIFIED", {"filepath": src_path})
             time.sleep(1) # Wait for file write to complete
             try:
-                ingest_file(event.src_path)
+                ingest_file(src_path)
                 if meta:
-                    KBMetadataTracker.save(event.src_path, meta["mtime"], meta["size"])
+                    KBMetadataTracker.save(src_path, meta["mtime"], meta["size"])
             except Exception as e:
-                log_event("WATCHER_MODIFY_ERROR", {"filepath": event.src_path, "error": str(e)})
+                log_event("WATCHER_MODIFY_ERROR", {"filepath": src_path, "error": str(e)})
 
     def on_deleted(self, event):
         if event.is_directory:
             return
-        ext = os.path.splitext(event.src_path)[1].lower()
+        src_path = event.src_path.decode('utf-8') if isinstance(event.src_path, bytes) else event.src_path
+        ext = os.path.splitext(src_path)[1].lower()
         if ext in SUPPORTED_EXTENSIONS:
-            log_event("WATCHER_FILE_DELETED", {"filepath": event.src_path})
+            log_event("WATCHER_FILE_DELETED", {"filepath": src_path})
             try:
-                ChromaStore.delete_by_filepath(event.src_path)
-                KBMetadataTracker.delete(event.src_path)
+                ChromaStore.delete_by_filepath(src_path)
+                KBMetadataTracker.delete(src_path)
             except Exception as e:
-                log_event("WATCHER_DELETE_ERROR", {"filepath": event.src_path, "error": str(e)})
+                log_event("WATCHER_DELETE_ERROR", {"filepath": src_path, "error": str(e)})
 
 class KBWatcher:
     def __init__(self):

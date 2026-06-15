@@ -1,5 +1,14 @@
 {
-    "extraPaths": [
-        "/home/ahmar/Desktop/AhmarData/openwork_project"
-    ]
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        ".venv",
+        "venv",
+        "agent/profiles",
+        "whatsapp-bridge",
+        "dashboard",
+        "temp_downloads"
+    ],
+    "venvPath": ".",
+    "venv": ".venv"
 }

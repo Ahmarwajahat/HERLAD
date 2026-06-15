@@ -54,7 +54,6 @@ def run_code_in_nano_and_screenshot(code: str, filename: str = "program.py", lan
     gnome-terminal, and capture a screenshot of its terminal output.
     """
     try:
-        import subprocess
         filepath = os.path.join(PROJECT_ROOT, "tasks", filename)
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, 'w', encoding='utf-8') as f:
@@ -116,13 +115,12 @@ def run_code_in_nano_and_screenshot(code: str, filename: str = "program.py", lan
     except Exception as e:
         return f"Error executing run_code_in_nano_and_screenshot: {str(e)}"
 
-def execute_bash_command(command: str, working_dir: str = None) -> str:
+def execute_bash_command(command: str, working_dir: str | None = None) -> str:
     """
     Execute a shell/bash command on the system, capture its output, and return it.
     Can be used to navigate folders, check environment, or run scripts.
     """
     try:
-        import subprocess
         cwd = working_dir if working_dir else PROJECT_ROOT
         if not os.path.exists(cwd):
             cwd = PROJECT_ROOT

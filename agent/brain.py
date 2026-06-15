@@ -447,7 +447,7 @@ def _make_api_call(
     api_key: str,
     model: str,
     messages: list,
-    tools: list = None,
+    tools: list | None = None,
     tool_choice: str = "auto",
     provider_name: str = "",
 ) -> dict:
@@ -495,7 +495,7 @@ def _make_api_call(
         )
     return response.json()
 
-def call_ai(messages: list, tools: list = None, tool_choice: str = "auto") -> tuple:
+def call_ai(messages: list, tools: list | None = None, tool_choice: str = "auto") -> tuple:
     task_type = get_model_size(messages)
     last_error = None
 
@@ -787,7 +787,7 @@ def run_agent(user_task: str):
         {"role": "user",   "content": user_prompt}
     ]
 
-    current_model = None
+    current_model = "unknown"
     max_steps = 30
 
     for step in range(max_steps):

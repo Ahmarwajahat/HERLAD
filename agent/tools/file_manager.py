@@ -27,11 +27,11 @@ PATH_ALIASES = {
     ".":       PROJECT_ROOT,
 }
 
-def resolve_path(p: str) -> str:
+def resolve_path(p: str | None) -> str:
     if p is None: return DESKTOP_PATH
     return PATH_ALIASES.get(p, p)
 
-def list_files(folder_path: str = None) -> list:
+def list_files(folder_path: str | None = None) -> list:
     path = resolve_path(folder_path)
     if not os.path.exists(path):
         return [f"Error: Folder '{path}' not found."]
@@ -406,7 +406,7 @@ def write_word_file(filepath: str, content: str) -> str:
 
     # Set default styles
     style = doc.styles['Normal']
-    font = style.font
+    font = getattr(style, 'font')
     font.name = 'Arial'
     font.size = Pt(10.5)
 

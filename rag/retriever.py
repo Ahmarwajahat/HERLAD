@@ -27,26 +27,34 @@ def retrieve_context(query: str, top_k: int = 5) -> list:
         
         # 3. Format results
         formatted_results = []
-        if results and 'ids' in results and results['ids'] and len(results['ids'][0]) > 0:
-            ids = results['ids'][0]
-            metadatas = results['metadatas'][0]
-            documents = results['documents'][0]
-            distances = results['distances'][0] if 'distances' in results else [0.0] * len(ids)
+        if results:
+            ids_list = results.get('ids')
+            metadatas_list = results.get('metadatas')
+            documents_list = results.get('documents')
+            distances_list = results.get('distances')
             
-            for idx in range(len(ids)):
-                meta = metadatas[idx]
-                distance = distances[idx]
-                # Cosine distance to similarity: similarity = 1.0 - (distance / 2.0)
-                # Keep it bounded between 0 and 1
-                similarity_score = max(0.0, min(1.0, 1.0 - (distance / 2.0)))
+            if ids_list and metadatas_list and documents_list and len(ids_list[0]) > 0:
+                ids = ids_list[0]
+                metadatas = metadatas_list[0]
+                documents = documents_list[0]
+                distances = distances_list[0] if distances_list else [0.0] * len(ids)
                 
-                formatted_results.append({
-                    "document_name": meta.get("document_name", ""),
-                    "file_path": meta.get("file_path", ""),
-                    "chunk_text": documents[idx] if idx < len(documents) else meta.get("chunk_text", ""),
-                    "chunk_id": ids[idx],
-                    "score": similarity_score
-                })
+                for idx in range(len(ids)):
+                    meta = metadatas[idx]
+                    if not meta:
+                        continue
+                    distance = distances[idx]
+                    # Cosine distance to similarity: similarity = 1.0 - (distance / 2.0)
+                    # Keep it bounded between 0 and 1
+                    similarity_score = max(0.0, min(1.0, 1.0 - (distance / 2.0)))
+                    
+                    formatted_results.append({
+                        "document_name": meta.get("document_name", ""),
+                        "file_path": meta.get("file_path", ""),
+                        "chunk_text": documents[idx] if idx < len(documents) else meta.get("chunk_text", ""),
+                        "chunk_id": ids[idx],
+                        "score": similarity_score
+                    })
                 
         # Log retrieval results
         log_event("RETRIEVAL_RESULTS", {
