@@ -290,8 +290,8 @@ openwork_project/
 ---
 
 ## 👥 Development Team
-- **Ahmar Wajahat** — Lead AI Agent & RL Model Trainer / Backend Architect
-- **Abu Baker** — UI Designer & Frontend Developer
+- **Ahmar Wajahat**
+- **Abu Baker** 
 
 ---
 *Created for ERP Automation & Advanced AI Orchestration.*
